@@ -42,13 +42,25 @@ int go_cdb_connect(const char* host, uint16_t port, int cdb_sock_type) {
 int _cdb_subscribe(int sock, int priority, int nspace, int *spoint, const char *fmt) {
 	return cdb_subscribe(sock, priority, nspace, spoint, fmt);
 }
+
+int _cdb_get(int sock, struct confd_value* v, const char* fmt) {
+	return cdb_get(sock, v, fmt);
+}
+
+int _cdb_num_instances(int sock, const char *fmt) {
+	return cdb_num_instances(sock, fmt);
+}
 */
 import "C"
 
 const (
 	CDB_DATA_SOCKET         = C.CDB_DATA_SOCKET
 	CDB_SUBSCRIPTION_SOCKET = C.CDB_SUBSCRIPTION_SOCKET
+
+	CDB_RUNNING = C.CDB_RUNNING
 )
+
+type Confd_value_t = C.struct_confd_value
 
 func Cdb_connect(host string, port uint16, cdb_sock_type int) (int, error) {
 	chost := C.CString(host)
@@ -77,4 +89,35 @@ func Cdb_subscribe_done(sock int) error {
 		return Confd_lasterr()
 	}
 	return nil
+}
+
+func Cdb_start_session(sock int, db int) error {
+	return resToError(C.cdb_start_session(C.int(sock), C.enum_cdb_db_type(db)))
+}
+
+func Cdb_end_session(sock int) error {
+	return resToError(C.cdb_end_session(C.int(sock)))
+}
+
+func Cdb_set_namespace(sock int, ns int) error {
+	return resToError(C.cdb_set_namespace(C.int(sock), C.int(ns)))
+}
+
+func Cdb_num_instances(sock int, path string) (uint, error) {
+	cpath := C.CString(path)
+	defer C.free(unsafe.Pointer(cpath))
+
+	res := C._cdb_num_instances(C.int(sock), cpath)
+
+	if res < 0 {
+		return 0, Confd_lasterr()
+	}
+
+	return uint(res), nil
+}
+
+func Cdb_get(sock int, v *Confd_value_t, path string) error {
+	cpath := C.CString(path)
+	defer C.free(unsafe.Pointer(cpath))
+	return resToError(C._cdb_get(C.int(sock), v, cpath))
 }

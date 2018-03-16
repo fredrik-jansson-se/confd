@@ -4,6 +4,7 @@ package confd_ll
 #include <arpa/inet.h>
 #include <errno.h>
 #include <string.h>
+#include <confd_lib.h>
 
 size_t lookup(const char* host, uint16_t port, struct sockaddr_storage* ss) {
 	memset(ss, 0, sizeof(struct sockaddr_storage));
@@ -27,3 +28,10 @@ size_t lookup(const char* host, uint16_t port, struct sockaddr_storage* ss) {
 
 */
 import "C"
+
+func resToError(res C.int) error {
+	if res != C.CONFD_OK {
+		return Confd_lasterr()
+	}
+	return nil
+}
