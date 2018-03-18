@@ -50,6 +50,18 @@ int _cdb_get(int sock, struct confd_value* v, const char* fmt) {
 int _cdb_num_instances(int sock, const char *fmt) {
 	return cdb_num_instances(sock, fmt);
 }
+
+int _cdb_cd(int sock, const char* fmt) {
+	return cdb_cd(sock, fmt);
+}
+
+int _cdb_get_int64(int sock, int64_t* val, const char* fmt) {
+	return cdb_get_int64(sock, val, fmt);
+}
+
+int _cdb_get_str(int sock, char* rval, int n, const char* fmt) {
+	return cdb_get_str(sock, (char*) rval, n, fmt);
+}
 */
 import "C"
 
@@ -58,6 +70,8 @@ const (
 	CDB_SUBSCRIPTION_SOCKET = C.CDB_SUBSCRIPTION_SOCKET
 
 	CDB_RUNNING = C.CDB_RUNNING
+
+	CDB_DONE_PRIORITY = C.CDB_DONE_PRIORITY
 )
 
 type Confd_value_t = C.struct_confd_value
@@ -120,4 +134,55 @@ func Cdb_get(sock int, v *Confd_value_t, path string) error {
 	cpath := C.CString(path)
 	defer C.free(unsafe.Pointer(cpath))
 	return resToError(C._cdb_get(C.int(sock), v, cpath))
+}
+
+func Cdb_cd(sock int, path string) error {
+	cpath := C.CString(path)
+	defer C.free(unsafe.Pointer(cpath))
+	return resToError(C._cdb_cd(C.int(sock), cpath))
+}
+
+func Cdb_get_str(sock int, path string, maxlen int) (string, error) {
+	cpath := C.CString(path)
+	defer C.free(unsafe.Pointer(cpath))
+	cval := make([]byte, maxlen+1)
+
+	res := C._cdb_get_str(C.int(sock), (*C.char)(unsafe.Pointer(&cval[0])), C.int(maxlen), cpath)
+
+	if res != C.CONFD_OK {
+		return "", Confd_lasterr()
+	}
+
+	return string(cval), nil
+}
+
+func Cdb_get_int64(sock int, path string) (int64, error) {
+	cpath := C.CString(path)
+	defer C.free(unsafe.Pointer(cpath))
+	var val C.int64_t
+
+	res := C._cdb_get_int64(C.int(sock), &val, cpath)
+
+	if res != C.CONFD_OK {
+		return 0, Confd_lasterr()
+	}
+
+	return int64(val), nil
+}
+
+func Cdb_read_subscription_socket(sock int, sub_points *int) (int, error) {
+	var resultlen C.int
+
+	res := C.cdb_read_subscription_socket(C.int(sock),
+		(*C.int)(unsafe.Pointer(sub_points)),
+		(*C.int)(unsafe.Pointer(&resultlen)))
+	if res != C.CONFD_OK {
+		return 0, Confd_lasterr()
+	}
+
+	return int(resultlen), nil
+}
+
+func Cdb_sync_subscription_socket(sock int, st int) error {
+	return resToError(C.cdb_sync_subscription_socket(C.int(sock), C.enum_cdb_subscription_sync_type(st)))
 }

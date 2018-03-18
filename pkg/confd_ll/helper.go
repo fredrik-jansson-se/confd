@@ -26,6 +26,10 @@ size_t lookup(const char* host, uint16_t port, struct sockaddr_storage* ss) {
 	return 0;
 }
 
+int64_t _CONFD_GET_INT64(const confd_value_t* val) {
+	return CONFD_GET_INT64(val);
+}
+
 */
 import "C"
 
@@ -34,4 +38,8 @@ func resToError(res C.int) error {
 		return Confd_lasterr()
 	}
 	return nil
+}
+
+func CONFD_GET_INT64(val *Confd_value_t) int64 {
+	return int64(C._CONFD_GET_INT64(val))
 }
